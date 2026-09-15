@@ -1,3 +1,5 @@
-業務管理ポータル PWA v0.2
-Supabase実データ閲覧版。既存PC版には変更を加えません。
-GitHub Pagesのbusiness-portal-pwaリポジトリのルート3ファイルを置換してください。
+業務管理ポータル PWA v0.2.1 正式修正版
+- 出荷依頼のSupabase列名を実スキーマに合わせて修正
+- 1機能の取得失敗で全画面が止まらない部分読込方式へ変更
+- Service Workerキャッシュをv0.2.1へ更新
+- PC版・Supabase保存データは変更しません

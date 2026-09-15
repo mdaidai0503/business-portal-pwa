@@ -68,14 +68,18 @@ async function q(table,select,opts={}){
 }
 async function loadAll(){
  try{
-  [D.products,D.balances,D.moves,D.shipments,D.transport,D.warehouses]=await Promise.all([
-   q('bp_products','id,code,product_group,name,standard_kg,min_quantity,active,updated_at'),
-   q('bp_inventory_balances','product_id,production_year,quantity,kg_quantity,reserved_quantity,updated_at'),
-   q('bp_stock_movements','id,product_id,movement_type,quantity,production_year,kg_quantity,partner,note,occurred_at',{order:'occurred_at',limit:50}),
-   q('bp_shipment_requests','id,request_no,request_type,request_date,ship_date,warehouse_name,ship_to,status,note,updated_at',{order:'request_date',limit:50}),
-   q('pi_transport_requests','id,no,request_date,carrier_name,carrier_fax,data,updated_at',{order:'request_date',limit:50}),
-   q('bp_warehouses','id,name,address,phone,fax,active,updated_at')
-  ]);
+  const jobs=[
+   ['products',q('bp_products','id,code,product_group,name,standard_kg,min_quantity,active,updated_at')],
+   ['balances',q('bp_inventory_balances','product_id,production_year,quantity,kg_quantity,reserved_quantity,updated_at')],
+   ['moves',q('bp_stock_movements','id,product_id,movement_type,quantity,production_year,kg_quantity,partner,note,occurred_at',{order:'occurred_at',limit:50})],
+   ['shipments',q('bp_shipment_requests','id,request_no,request_type,request_date,shipment_date,ship_from,ship_to,status,note,updated_at',{order:'request_date',limit:50})],
+   ['transport',q('pi_transport_requests','id,no,request_date,carrier_name,carrier_fax,data,updated_at',{order:'request_date',limit:50})],
+   ['warehouses',q('bp_warehouses','id,name,address,phone,fax,active,updated_at')]
+  ];
+  const rs=await Promise.allSettled(jobs.map(x=>x[1]));
+  let errors=[];
+  rs.forEach((r,i)=>{if(r.status==='fulfilled')D[jobs[i][0]]=r.value;else errors.push(jobs[i][0]+': '+r.reason.message)});
+  if(errors.length) console.warn('部分読込エラー',errors);
   const p=D.balances.reduce((a,b)=>a+Number(b.quantity||0),0), r=D.balances.reduce((a,b)=>a+Number(b.reserved_quantity||0),0);
   physical.textContent=p.toLocaleString()+'個';reserved.textContent=r.toLocaleString()+'個';available.textContent=(p-r).toLocaleString()+'個';
   productCount.textContent=D.products.length+'件'; synced.textContent='最終読込 '+new Date().toLocaleString('ja-JP');
@@ -93,7 +97,7 @@ function show(k){
   for(const x of D.moves)h+=`<tr><td>${esc((x.occurred_at||'').slice(0,10))}</td><td>${esc(pname(x.product_id))}</td><td>${esc(x.production_year)}</td><td>${Number(x.quantity||0)}</td><td>${esc(x.partner)}</td></tr>`; h+='</table>';
  } else if(k==='shipments'){
   h='<h2>出荷依頼</h2><table><tr><th>出荷日</th><th>番号</th><th>出荷先</th><th>状態</th></tr>';
-  for(const x of D.shipments)h+=`<tr><td>${esc(x.ship_date)}</td><td>${esc(x.request_no)}</td><td>${esc(x.ship_to)}</td><td>${esc(x.status)}</td></tr>`;h+='</table>';
+  for(const x of D.shipments)h+=`<tr><td>${esc(x.shipment_date)}</td><td>${esc(x.request_no)}</td><td>${esc(x.ship_to)}</td><td>${esc(x.status)}</td></tr>`;h+='</table>';
  } else if(k==='transport'){
   h='<h2>運送依頼</h2><table><tr><th>依頼日</th><th>番号</th><th>運送会社</th><th>納品先</th></tr>';
   for(const x of D.transport)h+=`<tr><td>${esc(x.request_date)}</td><td>${esc(x.no)}</td><td>${esc(x.carrier_name)}</td><td>${esc(x.data?.deliveryName)}</td></tr>`;h+='</table>';
@@ -103,6 +107,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.2.1');
 </script>
 </body></html>
