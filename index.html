@@ -58,7 +58,7 @@ async function start(){
  const {data:{user}}=await sb.auth.getUser(); if(!user)return;
  document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
  document.getElementById('user').textContent=user.email||'';
- await loadAll(); show('inventory');
+ await loadAll(); show('home');
 }
 async function q(table,select,opts={}){
  let x=sb.from(table).select(select);
@@ -180,7 +180,17 @@ async function importQuotes(){
 }
 function show(k){
  let h='';
- if(k==='quotes'){
+ if(k==='home'){
+  h=`<h2>業務管理ポータル</h2>
+  <div class="small" style="margin-bottom:18px">使用する業務を選択してください。</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('inventory')">商品・在庫管理</button>
+    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('quotes')">見積管理</button>
+    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('shipments')">出荷依頼</button>
+    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('warehouses')">営業倉庫</button>
+  </div>
+  <div class="small" style="margin-top:20px">運送依頼・FAXBOXは既存機能を壊さず、順次このトップ画面へ整理します。</div>`;
+ } else if(k==='quotes'){
   const qs=(D.quotes||[]);
   h=`<h2>見積閲覧</h2>
   <input id="qsearch" type="search" placeholder="得意先・見積番号・商品名で検索" oninput="renderQuoteList()">
@@ -245,6 +255,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.6.1');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7');
 </script>
 </body></html>
