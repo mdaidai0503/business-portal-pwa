@@ -86,7 +86,7 @@ async function loadAll(){
   productCount.textContent=D.products.length+'件'; synced.textContent='最終読込 '+new Date().toLocaleString('ja-JP');
  }catch(e){content.innerHTML='<div class="warn">読込エラー：'+esc(e.message)+'</div>';}
 }
-function pname(id){let p=D.products.find(x=>x.id===id);return p?`${p.code} ${p.name}`:''}
+function pname(id){let p=D.products.find(x=>x.id===id);if(!p)return '';let n=(p.name==='B'?'福建B':p.name);return `${p.code} ${n}`}
 function calcKg(){
  const s=document.getElementById('rproduct'),q=Number(document.getElementById('rqty')?.value||0);
  if(!s)return; const kg=Number(s.options[s.selectedIndex]?.dataset.kg||0);
@@ -202,10 +202,16 @@ function show(k){
   setTimeout(renderQuoteList,0);
  } else if(k==='inventory'){
   h='<h2>商品・在庫</h2><table><tr><th>商品</th><th>年産</th><th>実在庫</th><th>予約</th><th>出荷可能</th></tr>';
-  for(const b of D.balances)h+=`<tr><td>${esc(pname(b.product_id))}</td><td>${esc(b.production_year)}</td><td>${Number(b.quantity||0)}</td><td>${Number(b.reserved_quantity||0)}</td><td>${Number(b.quantity||0)-Number(b.reserved_quantity||0)}</td></tr>`;
+  const sortedBalances=[...D.balances].sort((a,b)=>{
+    const pa=D.products.find(x=>x.id===a.product_id), pb=D.products.find(x=>x.id===b.product_id);
+    const ca=String(pa?.code||''), cb=String(pb?.code||'');
+    const c=ca.localeCompare(cb,'ja',{numeric:true,sensitivity:'base'});
+    return c || Number(b.production_year||0)-Number(a.production_year||0);
+  });
+  for(const b of sortedBalances)h+=`<tr><td>${esc(pname(b.product_id))}</td><td>${esc(b.production_year)}</td><td>${Number(b.quantity||0)}</td><td>${Number(b.reserved_quantity||0)}</td><td>${Number(b.quantity||0)-Number(b.reserved_quantity||0)}</td></tr>`;
   h+='</table>';
  } else if(k==='receipt'){
-  const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name)}</option>`).join('');
+  const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
   h=`<h2>入庫登録</h2>
   <div class="small">登録すると入出庫履歴と実在庫を同時に更新します。</div>
   <label>入庫日</label><input id="rdate" type="date" value="${new Date().toLocaleDateString('sv-SE')}">
@@ -220,7 +226,7 @@ function show(k){
   h='<h2>入出庫履歴（最新50件）</h2><table><tr><th>日付</th><th>商品</th><th>年産</th><th>個数</th><th>相手先</th></tr>';
   for(const x of D.moves)h+=`<tr><td>${esc((x.occurred_at||'').slice(0,10))}</td><td>${esc(pname(x.product_id))}</td><td>${esc(x.production_year)}</td><td>${Number(x.quantity||0)}</td><td>${esc(x.partner)}</td></tr>`; h+='</table>';
  } else if(k==='shipmentNew'){
-  const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name)}</option>`).join('');
+  const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
   const wh=D.warehouses.map(x=>`<option>${esc(x.name)}</option>`).join('');
   h=`<h2>新規出荷依頼</h2><div class="small">確定時は実在庫を減らさず、予約在庫だけを増やします。</div>
   <label>依頼日</label><input id="sreqdate" type="date" value="${new Date().toLocaleDateString('sv-SE')}">
@@ -255,6 +261,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7.1');
 </script>
 </body></html>
