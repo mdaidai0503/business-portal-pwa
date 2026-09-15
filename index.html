@@ -180,7 +180,17 @@ async function importQuotes(){
 }
 function show(k){
  let h='';
- if(k==='inventory'){
+ if(k==='quotes'){
+  const qs=(D.quotes||[]);
+  h=`<h2>見積閲覧</h2>
+  <input id="qsearch" type="search" placeholder="得意先・見積番号・商品名で検索" oninput="renderQuoteList()">
+  <div id="qlist"></div>
+  <details style="margin-top:18px"><summary>PCの見積データを取り込む</summary>
+  <div class="small">PCの quotes.json を選択すると、Supabaseへコピーします。元ファイルは変更しません。</div>
+  <input id="qfile" type="file" accept=".json,application/json">
+  <button onclick="importQuotes()">quotes.jsonを取り込む</button><div id="qmsg" class="small"></div></details>`;
+  setTimeout(renderQuoteList,0);
+ } else if(k==='inventory'){
   h='<h2>商品・在庫</h2><table><tr><th>商品</th><th>年産</th><th>実在庫</th><th>予約</th><th>出荷可能</th></tr>';
   for(const b of D.balances)h+=`<tr><td>${esc(pname(b.product_id))}</td><td>${esc(b.production_year)}</td><td>${Number(b.quantity||0)}</td><td>${Number(b.reserved_quantity||0)}</td><td>${Number(b.quantity||0)-Number(b.reserved_quantity||0)}</td></tr>`;
   h+='</table>';
@@ -235,6 +245,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.6');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.6.1');
 </script>
 </body></html>
