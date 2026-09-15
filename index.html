@@ -36,7 +36,7 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 </div><div class="small" id="synced"></div></div>
 <div class="tabs">
 <button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
-<button onclick="show('shipments')">出荷依頼</button><button onclick="show('transport')">運送依頼</button>
+<button onclick="show('shipmentNew')">新規出荷依頼</button><button onclick="show('shipments')">出荷依頼一覧</button><button onclick="show('transport')">運送依頼</button>
 <button onclick="show('warehouses')">営業倉庫</button>
 </div>
 <div id="content" class="card">読み込み中...</div>
@@ -105,6 +105,38 @@ async function registerReceipt(){
  if(error){msg.textContent='登録エラー：'+error.message;return}
  msg.textContent='登録しました。'; await loadAll(); show('inventory');
 }
+let shipItems=[];
+function shipAvail(){
+ const p=document.getElementById('sproduct')?.value,y=Number(document.getElementById('syear')?.value);
+ const b=D.balances.find(x=>x.product_id===p&&Number(x.production_year)===y);
+ const a=b?Number(b.quantity||0)-Number(b.reserved_quantity||0):0;
+ const el=document.getElementById('savail');if(el)el.textContent='出荷可能在庫：'+a+'個';
+}
+function shipCalc(){
+ const s=document.getElementById('sproduct'),q=Number(document.getElementById('sqty')?.value||0);if(!s)return;
+ const kg=Number(s.options[s.selectedIndex]?.dataset.kg||0);document.getElementById('skg').value=q&&kg?q*kg:'';shipAvail();
+}
+function addShipItem(){
+ const s=document.getElementById('sproduct'),year=Number(document.getElementById('syear').value),qty=Number(document.getElementById('sqty').value),kg=Number(document.getElementById('skg').value||0);
+ if(!s.value||!year||qty<=0)return alert('商品・年産・個数を確認してください。');
+ const b=D.balances.find(x=>x.product_id===s.value&&Number(x.production_year)===year),avail=b?Number(b.quantity||0)-Number(b.reserved_quantity||0):0;
+ const already=shipItems.filter(x=>x.product_id===s.value&&x.production_year===year).reduce((a,x)=>a+x.quantity,0);
+ if(qty+already>avail)return alert('出荷可能在庫を超えています。');
+ shipItems.push({product_id:s.value,production_year:year,quantity:qty,kg_quantity:kg,source_name:s.options[s.selectedIndex].text});
+ renderShipItems();
+}
+function renderShipItems(){
+ const el=document.getElementById('sitems');if(!el)return;
+ el.innerHTML=shipItems.length?'<table><tr><th>商品</th><th>年産</th><th>個数</th><th></th></tr>'+shipItems.map((x,i)=>`<tr><td>${esc(x.source_name)}</td><td>${x.production_year}</td><td>${x.quantity}</td><td><button onclick="shipItems.splice(${i},1);renderShipItems()">削除</button></td></tr>`).join('')+'</table>':'<div class="small">明細はまだありません。</div>';
+}
+async function saveShipment(){
+ const msg=document.getElementById('smsg'),date=document.getElementById('sdate').value,to=document.getElementById('sto').value.trim();
+ if(!date||!to||!shipItems.length){msg.textContent='出荷日・出荷先・商品明細を確認してください。';return}
+ if(!confirm('出荷依頼を予約登録します。実在庫はまだ減りません。'))return;
+ const {error}=await sb.rpc('bp_create_shipment_reservation',{p_request_type:'SHIPMENT',p_request_date:document.getElementById('sreqdate').value,p_shipment_date:date,p_ship_from:document.getElementById('sfrom').value,p_ship_to:to,p_note:document.getElementById('snote').value.trim(),p_items:shipItems});
+ if(error){msg.textContent='登録エラー：'+error.message;return}
+ shipItems=[];msg.textContent='予約登録しました。';await loadAll();show('shipments');
+}
 function show(k){
  let h='';
  if(k==='inventory'){
@@ -126,6 +158,25 @@ function show(k){
  } else if(k==='moves'){
   h='<h2>入出庫履歴（最新50件）</h2><table><tr><th>日付</th><th>商品</th><th>年産</th><th>個数</th><th>相手先</th></tr>';
   for(const x of D.moves)h+=`<tr><td>${esc((x.occurred_at||'').slice(0,10))}</td><td>${esc(pname(x.product_id))}</td><td>${esc(x.production_year)}</td><td>${Number(x.quantity||0)}</td><td>${esc(x.partner)}</td></tr>`; h+='</table>';
+ } else if(k==='shipmentNew'){
+  const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name)}</option>`).join('');
+  const wh=D.warehouses.map(x=>`<option>${esc(x.name)}</option>`).join('');
+  h=`<h2>新規出荷依頼</h2><div class="small">確定時は実在庫を減らさず、予約在庫だけを増やします。</div>
+  <label>依頼日</label><input id="sreqdate" type="date" value="${new Date().toLocaleDateString('sv-SE')}">
+  <label>出荷日</label><input id="sdate" type="date">
+  <label>出荷元</label><select id="sfrom" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;font-size:16px">${wh}</select>
+  <label>出荷先</label><input id="sto" type="text">
+  <label>備考</label><input id="snote" type="text">
+  <hr><b>商品明細</b>
+  <label>商品</label><select id="sproduct" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;font-size:16px" onchange="shipCalc()">${opts}</select>
+  <label>年産</label><input id="syear" type="number" value="${new Date().getFullYear()}" oninput="shipAvail()">
+  <div id="savail" class="small"></div>
+  <label>個数</label><input id="sqty" type="number" min="1" step="1" oninput="shipCalc()">
+  <label>kg</label><input id="skg" type="number" min="0" step="0.01">
+  <button onclick="addShipItem()">明細に追加</button>
+  <div id="sitems"></div>
+  <button class="primary" onclick="saveShipment()">出荷依頼を予約登録</button><div id="smsg" class="small"></div>`;
+  setTimeout(shipAvail,0);
  } else if(k==='shipments'){
   h='<h2>出荷依頼</h2><table><tr><th>出荷日</th><th>番号</th><th>出荷先</th><th>状態</th></tr>';
   for(const x of D.shipments)h+=`<tr><td>${esc(x.shipment_date)}</td><td>${esc(x.request_no)}</td><td>${esc(x.ship_to)}</td><td>${esc(x.status)}</td></tr>`;h+='</table>';
@@ -138,6 +189,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.3');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.4');
 </script>
 </body></html>
