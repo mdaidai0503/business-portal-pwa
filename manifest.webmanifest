@@ -1,0 +1,9 @@
+{
+  "name":"業務管理ポータル",
+  "short_name":"業務管理",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#f4f6f8",
+  "theme_color":"#123b66",
+  "icons":[]
+}
