@@ -1,55 +1,108 @@
 <!doctype html>
-<html lang="ja"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#123b66"><meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="業務管理">
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>業務管理ポータル</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<title>業務管理ポータル PWA v0.1</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif;background:#f4f6f8;color:#17202a}
-header{background:#123b66;color:white;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;position:sticky;top:0;z-index:5}
-h1{font-size:20px;margin:0}main{max-width:900px;margin:auto;padding:14px 14px calc(90px + env(safe-area-inset-bottom))}
-.card{background:white;border:1px solid #dde3ea;border-radius:14px;padding:14px;margin-bottom:12px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:600px){.grid{grid-template-columns:1fr}}
-button,input,select{font:inherit}input,select{width:100%;padding:11px;border:1px solid #ccd4dd;border-radius:9px}
-button{border:0;border-radius:10px;padding:11px 13px;font-weight:700;background:#123b66;color:white}
-button.secondary{background:#e7edf4;color:#123b66}label{display:block;font-size:12px;font-weight:700;margin:8px 0 4px}
-.muted{font-size:12px;color:#667085}.hidden{display:none!important}.big{font-size:28px;font-weight:800}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 6px;border-bottom:1px solid #e5e9ef;text-align:left}
-nav{position:fixed;bottom:0;left:0;right:0;background:#123b66;padding:7px 4px calc(7px + env(safe-area-inset-bottom));display:flex;justify-content:space-around}
-nav button{font-size:11px;padding:6px;background:transparent}
+*{box-sizing:border-box} body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f5f6f8;color:#111}
+header{position:sticky;top:0;background:#fff;padding:14px 16px;border-bottom:1px solid #ddd;z-index:2}
+h1{font-size:20px;margin:0} .wrap{padding:14px;max-width:900px;margin:auto}
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px #0001}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px} button{font-size:16px;padding:14px;border:1px solid #ccc;border-radius:12px;background:#fff}
+button.primary{background:#111;color:#fff} input{width:100%;padding:12px;margin:5px 0;border:1px solid #ccc;border-radius:10px;font-size:16px}
+.small{font-size:13px;color:#666} .num{font-size:26px;font-weight:700} table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{display:none} .tabs{display:flex;gap:7px;overflow:auto;padding-bottom:8px}
+.tabs button{white-space:nowrap;padding:9px 12px;font-size:14px} .warn{background:#fff7dc} .ok{background:#eef9ef}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head><body>
-<header><h1>業務管理ポータル <small>クラウド版 v0.1</small></h1></header>
-<main>
-<section id="login" class="card"><h2>ログイン</h2><label>メールアドレス</label><input id="email" type="email"><label>パスワード</label><input id="password" type="password"><p><button onclick="login()">ログイン</button></p><div id="loginMsg" class="muted"></div></section>
-<section id="app" class="hidden">
-<div id="homeView">
-<div class="grid"><div class="card"><div class="muted">商品</div><div id="productCount" class="big">-</div></div><div class="card"><div class="muted">直近入出庫</div><div id="moveCount" class="big">-</div></div></div>
-<div class="card"><h2>クラウド版</h2><p>PC版を変更せず、iPhone/PC共通データをSupabaseへ保存します。</p><p class="muted">一覧は必要件数だけ取得し、PDFは自動取得しません。</p></div>
-</div>
-<div id="productsView" class="hidden"><div class="card"><h2>商品一覧</h2><div style="overflow:auto"><table><thead><tr><th>コード</th><th>商品名</th><th>規格</th><th>単位</th></tr></thead><tbody id="productsBody"></tbody></table></div></div></div>
-<div id="stockView" class="hidden"><div class="card"><h2>在庫</h2><div style="overflow:auto"><table><thead><tr><th>商品</th><th>現在庫</th><th>予約</th><th>更新</th></tr></thead><tbody id="stockBody"></tbody></table></div></div></div>
-<div id="movementView" class="hidden"><div class="card"><h2>入出庫登録</h2><label>商品</label><select id="moveProduct"></select><div class="grid"><div><label>種類</label><select id="moveType"><option value="in">入庫</option><option value="out">出庫</option><option value="adjust">調整</option></select></div><div><label>数量</label><input id="moveQty" type="number" step="0.01"></div></div><label>メモ</label><input id="moveMemo"><p><button onclick="saveMovement()">登録</button></p></div>
-<div class="card"><h2>直近50件</h2><div style="overflow:auto"><table><thead><tr><th>日時</th><th>種類</th><th>数量</th><th>メモ</th></tr></thead><tbody id="movesBody"></tbody></table></div></div></div>
+</head>
+<body>
+<header><h1>業務管理ポータル</h1><div id="user" class="small"></div></header>
+<div class="wrap">
+<section id="login" class="card">
+<h2>ログイン</h2><input id="email" type="email" placeholder="メールアドレス"><input id="password" type="password" placeholder="パスワード">
+<button class="primary" onclick="login()">ログイン</button><div id="loginmsg" class="small"></div>
 </section>
-</main>
-<nav id="nav" class="hidden"><button onclick="show('home')">🏠<br>ホーム</button><button onclick="show('products')">📦<br>商品</button><button onclick="show('stock')">📊<br>在庫</button><button onclick="show('movement')">↕️<br>入出庫</button><button onclick="logout()">↪<br>終了</button></nav>
+<section id="app" class="hidden">
+<div class="card"><div class="grid">
+<div><div class="small">実在庫</div><div id="physical" class="num">-</div></div>
+<div><div class="small">予約在庫</div><div id="reserved" class="num">-</div></div>
+<div><div class="small">出荷可能</div><div id="available" class="num">-</div></div>
+<div><div class="small">商品数</div><div id="productCount" class="num">-</div></div>
+</div><div class="small" id="synced"></div></div>
+<div class="tabs">
+<button onclick="show('inventory')">商品・在庫</button><button onclick="show('moves')">入出庫履歴</button>
+<button onclick="show('shipments')">出荷依頼</button><button onclick="show('transport')">運送依頼</button>
+<button onclick="show('warehouses')">営業倉庫</button>
+</div>
+<div id="content" class="card">読み込み中...</div>
+<div class="card small">通信量対策：必要な列だけ取得し、履歴は最新50件を基本表示します。PDFは自動取得しません。</div>
+</section>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SB_URL="https://crltrozxztivkyxtjjxv.supabase.co", SB_KEY="sb_publishable_znOVYKMnJiZuxrsXPaLPxA_EbUdenvN";
-const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
-let products=[];
-const $=id=>document.getElementById(id);
-function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function show(n){for(const x of ['home','products','stock','movement'])$(x+'View').classList.toggle('hidden',x!==n); if(n==='stock')loadStock();if(n==='movement')loadMoves();}
-async function login(){$('loginMsg').textContent='ログイン中...';const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){$('loginMsg').textContent=error.message;return}boot()}
-async function logout(){await sb.auth.signOut();location.reload()}
-async function boot(){const {data:{session}}=await sb.auth.getSession();if(!session)return;$('login').classList.add('hidden');$('app').classList.remove('hidden');$('nav').classList.remove('hidden');await loadProducts();await loadMoves();}
-async function loadProducts(){const {data,error}=await sb.from('products').select('id,code,name,spec,unit').eq('active',true).order('sort_order').limit(200);if(error)return;products=data||[];$('productCount').textContent=products.length;$('productsBody').innerHTML=products.map(x=>`<tr><td>${esc(x.code||'')}</td><td>${esc(x.name)}</td><td>${esc(x.spec||'')}</td><td>${esc(x.unit||'')}</td></tr>`).join('');$('moveProduct').innerHTML=products.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}
-async function loadStock(){const {data,error}=await sb.from('bp_inventory_balances').select('product_id,on_hand,reserved,updated_at').order('updated_at',{ascending:false}).limit(200);if(error)return;$('stockBody').innerHTML=(data||[]).map(x=>{const p=products.find(p=>p.id===x.product_id);return `<tr><td>${esc(p?.name||x.product_id)}</td><td>${x.on_hand}</td><td>${x.reserved}</td><td>${new Date(x.updated_at).toLocaleString('ja-JP')}</td></tr>`}).join('')||'<tr><td colspan="4">在庫データはまだありません</td></tr>'}
-async function loadMoves(){const {data,error}=await sb.from('bp_stock_movements').select('id,product_id,movement_type,quantity,note,occurred_at,updated_at').order('occurred_at',{ascending:false}).limit(50);if(error)return;$('moveCount').textContent=(data||[]).length;$('movesBody').innerHTML=(data||[]).map(x=>`<tr><td>${new Date(x.occurred_at).toLocaleString('ja-JP')}</td><td>${esc(x.movement_type)}</td><td>${x.quantity}</td><td>${esc(x.note||'')}</td></tr>`).join('')||'<tr><td colspan="4">履歴はまだありません</td></tr>'}
-async function saveMovement(){const {data:{user}}=await sb.auth.getUser();if(!user)return;const q=Number($('moveQty').value);if(!Number.isFinite(q)||q===0)return alert('数量を入力してください');const row={owner_id:user.id,product_id:$('moveProduct').value,movement_type:$('moveType').value,quantity:q,note:$('moveMemo').value.trim()};const {error}=await sb.from('bp_stock_movements').insert(row);if(error)return alert(error.message);$('moveQty').value='';$('moveMemo').value='';alert('登録しました');await loadMoves()}
-boot();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js');
-</script></body></html>
+const sb=supabase.createClient("https://crltrozxztivkyxtjjxv.supabase.co","sb_publishable_znOVYKMnJiZuxrsXPaLPxA_EbUdenvN");
+let D={products:[],balances:[],moves:[],shipments:[],transport:[],warehouses:[]};
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+async function login(){
+ const email=document.getElementById('email').value.trim(), password=document.getElementById('password').value;
+ const {error}=await sb.auth.signInWithPassword({email,password});
+ if(error) return document.getElementById('loginmsg').textContent=error.message;
+ start();
+}
+async function start(){
+ const {data:{user}}=await sb.auth.getUser(); if(!user)return;
+ document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
+ document.getElementById('user').textContent=user.email||'';
+ await loadAll(); show('inventory');
+}
+async function q(table,select,opts={}){
+ let x=sb.from(table).select(select);
+ if(opts.order)x=x.order(opts.order,{ascending:false});
+ if(opts.limit)x=x.limit(opts.limit);
+ const {data,error}=await x;if(error)throw error;return data||[];
+}
+async function loadAll(){
+ try{
+  [D.products,D.balances,D.moves,D.shipments,D.transport,D.warehouses]=await Promise.all([
+   q('bp_products','id,code,product_group,name,standard_kg,min_quantity,active,updated_at'),
+   q('bp_inventory_balances','product_id,production_year,quantity,kg_quantity,reserved_quantity,updated_at'),
+   q('bp_stock_movements','id,product_id,movement_type,quantity,production_year,kg_quantity,partner,note,occurred_at',{order:'occurred_at',limit:50}),
+   q('bp_shipment_requests','id,request_no,request_type,request_date,ship_date,warehouse_name,ship_to,status,note,updated_at',{order:'request_date',limit:50}),
+   q('pi_transport_requests','id,no,request_date,carrier_name,carrier_fax,data,updated_at',{order:'request_date',limit:50}),
+   q('bp_warehouses','id,name,address,phone,fax,active,updated_at')
+  ]);
+  const p=D.balances.reduce((a,b)=>a+Number(b.quantity||0),0), r=D.balances.reduce((a,b)=>a+Number(b.reserved_quantity||0),0);
+  physical.textContent=p.toLocaleString()+'個';reserved.textContent=r.toLocaleString()+'個';available.textContent=(p-r).toLocaleString()+'個';
+  productCount.textContent=D.products.length+'件'; synced.textContent='最終読込 '+new Date().toLocaleString('ja-JP');
+ }catch(e){content.innerHTML='<div class="warn">読込エラー：'+esc(e.message)+'</div>';}
+}
+function pname(id){let p=D.products.find(x=>x.id===id);return p?`${p.code} ${p.name}`:''}
+function show(k){
+ let h='';
+ if(k==='inventory'){
+  h='<h2>商品・在庫</h2><table><tr><th>商品</th><th>年産</th><th>実在庫</th><th>予約</th><th>出荷可能</th></tr>';
+  for(const b of D.balances)h+=`<tr><td>${esc(pname(b.product_id))}</td><td>${esc(b.production_year)}</td><td>${Number(b.quantity||0)}</td><td>${Number(b.reserved_quantity||0)}</td><td>${Number(b.quantity||0)-Number(b.reserved_quantity||0)}</td></tr>`;
+  h+='</table>';
+ } else if(k==='moves'){
+  h='<h2>入出庫履歴（最新50件）</h2><table><tr><th>日付</th><th>商品</th><th>年産</th><th>個数</th><th>相手先</th></tr>';
+  for(const x of D.moves)h+=`<tr><td>${esc((x.occurred_at||'').slice(0,10))}</td><td>${esc(pname(x.product_id))}</td><td>${esc(x.production_year)}</td><td>${Number(x.quantity||0)}</td><td>${esc(x.partner)}</td></tr>`; h+='</table>';
+ } else if(k==='shipments'){
+  h='<h2>出荷依頼</h2><table><tr><th>出荷日</th><th>番号</th><th>出荷先</th><th>状態</th></tr>';
+  for(const x of D.shipments)h+=`<tr><td>${esc(x.ship_date)}</td><td>${esc(x.request_no)}</td><td>${esc(x.ship_to)}</td><td>${esc(x.status)}</td></tr>`;h+='</table>';
+ } else if(k==='transport'){
+  h='<h2>運送依頼</h2><table><tr><th>依頼日</th><th>番号</th><th>運送会社</th><th>納品先</th></tr>';
+  for(const x of D.transport)h+=`<tr><td>${esc(x.request_date)}</td><td>${esc(x.no)}</td><td>${esc(x.carrier_name)}</td><td>${esc(x.data?.deliveryName)}</td></tr>`;h+='</table>';
+ } else {
+  h='<h2>営業倉庫</h2>'; for(const x of D.warehouses)h+=`<div class="card"><b>${esc(x.name)}</b><br>${esc(x.address)}<br>TEL ${esc(x.phone)} / FAX ${esc(x.fax)}</div>`;
+ }
+ content.innerHTML=h;
+}
+sb.auth.getSession().then(({data})=>{if(data.session)start()});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');
+</script>
+</body></html>
