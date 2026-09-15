@@ -35,7 +35,7 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 <div><div class="small">商品数</div><div id="productCount" class="num">-</div></div>
 </div><div class="small" id="synced"></div></div>
 <div class="tabs">
-<button onclick="show('inventory')">商品・在庫</button><button onclick="show('moves')">入出庫履歴</button>
+<button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
 <button onclick="show('shipments')">出荷依頼</button><button onclick="show('transport')">運送依頼</button>
 <button onclick="show('warehouses')">営業倉庫</button>
 </div>
@@ -86,12 +86,43 @@ async function loadAll(){
  }catch(e){content.innerHTML='<div class="warn">読込エラー：'+esc(e.message)+'</div>';}
 }
 function pname(id){let p=D.products.find(x=>x.id===id);return p?`${p.code} ${p.name}`:''}
+function calcKg(){
+ const s=document.getElementById('rproduct'),q=Number(document.getElementById('rqty')?.value||0);
+ if(!s)return; const kg=Number(s.options[s.selectedIndex]?.dataset.kg||0);
+ document.getElementById('rkg').value=q&&kg?q*kg:'';
+}
+async function registerReceipt(){
+ const btn=event.currentTarget,msg=document.getElementById('rmsg');
+ const product=document.getElementById('rproduct').value, year=Number(document.getElementById('ryear').value),
+ qty=Number(document.getElementById('rqty').value), kg=Number(document.getElementById('rkg').value||0),
+ partner=document.getElementById('rpartner').value.trim(), note=document.getElementById('rnote').value.trim(),
+ date=document.getElementById('rdate').value;
+ if(!product||!date||!year||!Number.isFinite(qty)||qty<=0){msg.textContent='入庫日・商品・年産・個数を確認してください。';return}
+ if(!confirm(`入庫を登録します。\n個数：${qty}個\n重量：${kg}kg`))return;
+ btn.disabled=true;msg.textContent='登録中...';
+ const {error}=await sb.rpc('bp_register_inventory_receipt',{p_product_id:product,p_production_year:year,p_quantity:qty,p_kg_quantity:kg,p_partner:partner,p_note:note,p_occurred_date:date});
+ btn.disabled=false;
+ if(error){msg.textContent='登録エラー：'+error.message;return}
+ msg.textContent='登録しました。'; await loadAll(); show('inventory');
+}
 function show(k){
  let h='';
  if(k==='inventory'){
   h='<h2>商品・在庫</h2><table><tr><th>商品</th><th>年産</th><th>実在庫</th><th>予約</th><th>出荷可能</th></tr>';
   for(const b of D.balances)h+=`<tr><td>${esc(pname(b.product_id))}</td><td>${esc(b.production_year)}</td><td>${Number(b.quantity||0)}</td><td>${Number(b.reserved_quantity||0)}</td><td>${Number(b.quantity||0)-Number(b.reserved_quantity||0)}</td></tr>`;
   h+='</table>';
+ } else if(k==='receipt'){
+  const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name)}</option>`).join('');
+  h=`<h2>入庫登録</h2>
+  <div class="small">登録すると入出庫履歴と実在庫を同時に更新します。</div>
+  <label>入庫日</label><input id="rdate" type="date" value="${new Date().toLocaleDateString('sv-SE')}">
+  <label>商品</label><select id="rproduct" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;font-size:16px" onchange="calcKg()">${opts}</select>
+  <label>年産</label><input id="ryear" type="number" value="${new Date().getFullYear()}">
+  <label>個数</label><input id="rqty" type="number" min="1" step="1" oninput="calcKg()">
+  <label>kg</label><input id="rkg" type="number" min="0" step="0.01">
+  <label>相手先</label><input id="rpartner" type="text">
+  <label>備考</label><input id="rnote" type="text">
+  <button class="primary" onclick="registerReceipt()">入庫を登録</button><div id="rmsg" class="small"></div>`;
  } else if(k==='moves'){
   h='<h2>入出庫履歴（最新50件）</h2><table><tr><th>日付</th><th>商品</th><th>年産</th><th>個数</th><th>相手先</th></tr>';
   for(const x of D.moves)h+=`<tr><td>${esc((x.occurred_at||'').slice(0,10))}</td><td>${esc(pname(x.product_id))}</td><td>${esc(x.production_year)}</td><td>${Number(x.quantity||0)}</td><td>${esc(x.partner)}</td></tr>`; h+='</table>';
@@ -107,6 +138,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.2.1');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.3');
 </script>
 </body></html>
