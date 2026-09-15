@@ -35,7 +35,7 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 <div><div class="small">商品数</div><div id="productCount" class="num">-</div></div>
 </div><div class="small" id="synced"></div></div>
 <div class="tabs">
-<button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
+<button onclick="show('quotes')">見積閲覧</button><button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
 <button onclick="show('shipmentNew')">新規出荷依頼</button><button onclick="show('shipments')">出荷依頼一覧</button><button onclick="show('transport')">運送依頼</button>
 <button onclick="show('warehouses')">営業倉庫</button>
 </div>
@@ -74,7 +74,8 @@ async function loadAll(){
    ['moves',q('bp_stock_movements','id,product_id,movement_type,quantity,production_year,kg_quantity,partner,note,occurred_at',{order:'occurred_at',limit:50})],
    ['shipments',q('bp_shipment_requests','id,request_no,request_type,request_date,shipment_date,ship_from,ship_to,status,note,updated_at',{order:'request_date',limit:50})],
    ['transport',q('pi_transport_requests','id,no,request_date,carrier_name,carrier_fax,data,updated_at',{order:'request_date',limit:50})],
-   ['warehouses',q('bp_warehouses','id,name,address,phone,fax,active,updated_at')]
+   ['warehouses',q('bp_warehouses','id,name,address,phone,fax,active,updated_at')],
+   ['quotes',q('bp_quotes','id,quote_id,quote_date,customer,contact_person,total,status,items,pdf_path,updated_at',{order:'quote_date',limit:100})]
   ];
   const rs=await Promise.allSettled(jobs.map(x=>x[1]));
   let errors=[];
@@ -149,6 +150,34 @@ async function cancelShipment(id){
  if(error){alert('取消エラー：'+error.message);return}
  await loadAll();show('shipments');alert('取消しました。');
 }
+function yen(v){return Number(v||0).toLocaleString('ja-JP')}
+function renderQuoteList(){
+ const el=document.getElementById('qlist');if(!el)return;
+ const s=(document.getElementById('qsearch')?.value||'').toLowerCase();
+ const a=(D.quotes||[]).filter(q=>{
+   const item=(q.items||[]).map(x=>x.name||'').join(' ');
+   return !s||[q.quote_id,q.customer,q.contact_person,q.status,item].join(' ').toLowerCase().includes(s);
+ });
+ el.innerHTML=a.length?a.map(q=>`<div class="card" style="margin:10px 0;padding:14px" onclick="quoteDetail('${q.id}')"><b>${esc(q.quote_date||'')}　${esc(q.customer||'得意先未入力')}</b><br><span class="small">${esc(q.quote_id)}　${esc(q.status||'')}　${q.total?('￥'+yen(q.total)):''}</span></div>`).join(''):'<div class="small">該当する見積はありません。</div>';
+}
+function quoteDetail(id){
+ const q=(D.quotes||[]).find(x=>x.id===id);if(!q)return;
+ const rows=(q.items||[]).map(x=>`<tr><td>${esc(x.name||'')}</td><td>${esc(x.unit||'')}</td><td>${esc(x.count||'')}</td><td>${esc(x.quantity||'')}</td><td>${esc(x.unitPrice||'')}</td><td>${esc(x.amount||'')}</td></tr>`).join('');
+ content.innerHTML=`<button onclick="show('quotes')">← 見積一覧へ</button><h2>${esc(q.customer||'得意先未入力')}</h2>
+ <div>見積番号：${esc(q.quote_id)}<br>見積日：${esc(q.quote_date||'')}<br>担当者：${esc(q.contact_person||'')}<br>状態：${esc(q.status||'')}<br>合計：${q.total?'￥'+yen(q.total):'－'}</div>
+ <div style="overflow:auto"><table><tr><th>商品</th><th>単位</th><th>入数</th><th>数量</th><th>単価</th><th>金額</th></tr>${rows}</table></div>
+ <div class="small">PDFは現在PC保存のため、次の段階で「PDFを見る」を追加します。</div>`;
+}
+async function importQuotes(){
+ const f=document.getElementById('qfile')?.files?.[0],msg=document.getElementById('qmsg');if(!f){msg.textContent='quotes.jsonを選択してください。';return}
+ let a;try{a=JSON.parse(await f.text())}catch(e){msg.textContent='JSONを読み込めません。';return}
+ if(!Array.isArray(a)){msg.textContent='見積データ形式を確認してください。';return}
+ const {data:{user}}=await sb.auth.getUser();if(!user){msg.textContent='ログインを確認してください。';return}
+ const rows=a.map(x=>({owner_id:user.id,quote_id:x.quoteId,quote_date:x.quoteDate||null,customer:x.customer||'',contact_person:x.contactPerson||'',total:Number(x.total||0),status:x.status||'',xlsx_path:x.xlsxPath||'',pdf_path:x.pdfPath||'',items:Array.isArray(x.items)?x.items:[],source_data:x,created_at:x.createdAt||new Date().toISOString(),updated_at:x.updatedAt||new Date().toISOString()}));
+ const {error}=await sb.from('bp_quotes').upsert(rows,{onConflict:'owner_id,quote_id'});
+ if(error){msg.textContent='取込エラー：'+error.message;return}
+ msg.textContent=rows.length+'件を取り込みました。';await loadAll();show('quotes');
+}
 function show(k){
  let h='';
  if(k==='inventory'){
@@ -206,6 +235,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.5.1');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.6');
 </script>
 </body></html>
