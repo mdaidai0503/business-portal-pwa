@@ -137,6 +137,18 @@ async function saveShipment(){
  if(error){msg.textContent='登録エラー：'+error.message;return}
  shipItems=[];msg.textContent='予約登録しました。';await loadAll();show('shipments');
 }
+async function completeShipment(id){
+ if(!confirm('出荷完了にします。\n予約在庫を解除し、実在庫を減算します。'))return;
+ const {error}=await sb.rpc('bp_complete_shipment',{p_shipment_id:id});
+ if(error){alert('出荷完了エラー：'+error.message);return}
+ await loadAll();show('shipments');alert('出荷完了しました。');
+}
+async function cancelShipment(id){
+ if(!confirm('この出荷依頼を取消します。\n実在庫は減らさず、予約在庫だけを解除します。'))return;
+ const {error}=await sb.rpc('bp_cancel_shipment',{p_shipment_id:id});
+ if(error){alert('取消エラー：'+error.message);return}
+ await loadAll();show('shipments');alert('取消しました。');
+}
 function show(k){
  let h='';
  if(k==='inventory'){
@@ -178,7 +190,7 @@ function show(k){
   <button class="primary" onclick="saveShipment()">出荷依頼を予約登録</button><div id="smsg" class="small"></div>`;
   setTimeout(shipAvail,0);
  } else if(k==='shipments'){
-  h='<h2>出荷依頼</h2><table><tr><th>出荷日</th><th>番号</th><th>出荷先</th><th>状態</th></tr>';
+  h='<h2>出荷依頼</h2><table><tr><th>出荷日</th><th>番号</th><th>出荷先</th><th>状態</th><th>操作</th></tr>';
   for(const x of D.shipments)h+=`<tr><td>${esc(x.shipment_date)}</td><td>${esc(x.request_no)}</td><td>${esc(x.ship_to)}</td><td>${esc(x.status)}</td></tr>`;h+='</table>';
  } else if(k==='transport'){
   h='<h2>運送依頼</h2><table><tr><th>依頼日</th><th>番号</th><th>運送会社</th><th>納品先</th></tr>';
@@ -189,6 +201,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.4');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.5');
 </script>
 </body></html>
