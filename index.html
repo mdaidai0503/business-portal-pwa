@@ -191,7 +191,12 @@ function show(k){
   setTimeout(shipAvail,0);
  } else if(k==='shipments'){
   h='<h2>出荷依頼</h2><table><tr><th>出荷日</th><th>番号</th><th>出荷先</th><th>状態</th><th>操作</th></tr>';
-  for(const x of D.shipments)h+=`<tr><td>${esc(x.shipment_date)}</td><td>${esc(x.request_no)}</td><td>${esc(x.ship_to)}</td><td>${esc(x.status)}</td></tr>`;h+='</table>';
+  for(const x of D.shipments){
+   const actions=x.status==='RESERVED'
+    ? `<button onclick="completeShipment('${x.id}')">出荷完了</button> <button onclick="cancelShipment('${x.id}')">取消</button>`
+    : '';
+   h+=`<tr><td>${esc(x.shipment_date)}</td><td>${esc(x.request_no)}</td><td>${esc(x.ship_to)}</td><td>${esc(x.status)}</td><td>${actions}</td></tr>`;
+  }h+='</table>';
  } else if(k==='transport'){
   h='<h2>運送依頼</h2><table><tr><th>依頼日</th><th>番号</th><th>運送会社</th><th>納品先</th></tr>';
   for(const x of D.transport)h+=`<tr><td>${esc(x.request_date)}</td><td>${esc(x.no)}</td><td>${esc(x.carrier_name)}</td><td>${esc(x.data?.deliveryName)}</td></tr>`;h+='</table>';
@@ -201,6 +206,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.5');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.5.1');
 </script>
 </body></html>
