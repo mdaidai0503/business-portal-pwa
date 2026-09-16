@@ -1,41 +1,251 @@
-<!doctype html><html lang='ja'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover'><title>出張承認伺</title><link rel='manifest' href='manifest.webmanifest'><style>
-:root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Yu Gothic',sans-serif;color:#17212b;background:#f3f6f9}*{box-sizing:border-box}body{margin:0}header{background:#173b63;color:white;padding:14px 18px;position:sticky;top:0;z-index:5}header b{font-size:20px}.wrap{max-width:1100px;margin:auto;padding:16px}.card{background:white;border-radius:12px;padding:16px;margin:0 0 14px;box-shadow:0 1px 5px #0001}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}label{font-size:12px;font-weight:700;display:block;margin-bottom:4px}input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:9px;border:1px solid #bdc8d3;border-radius:7px;background:white}textarea{min-height:60px}.section-title{font-size:17px;font-weight:800;margin-bottom:10px}.row{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;align-items:end;margin-bottom:8px}.row .wide{grid-column:span 2}.btn{border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#1769aa;color:white}.secondary{background:#e7eef5}.danger{background:#fee;color:#a00}.sum{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.sum div{background:#eef4f8;padding:12px;border-radius:8px;text-align:center}.sum strong{display:block;font-size:19px;margin-top:5px}.actions{display:flex;gap:8px;flex-wrap:wrap}.note{font-size:12px;color:#5c6770}.hidden{display:none}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr 1fr}.row .wide{grid-column:span 2}.sum{grid-template-columns:1fr 1fr}.wrap{padding:10px}}
-@media print{header,.no-print,.btn{display:none!important}body{background:white}.wrap{max-width:none;padding:0}.card{box-shadow:none;border:1px solid #bbb;break-inside:avoid;margin-bottom:8px;padding:10px}.section-title{font-size:14px}.sum strong{font-size:15px}input,select,textarea{border:0;padding:2px;appearance:none}.note{display:none}}
-</style></head><body><header><b>出張承認伺</b> <span style='font-size:12px'>v0.3 OFFICIAL_LATEST</span></header><main class='wrap'>
-<div class='card'><div class='section-title'>基本情報</div><div class='grid'><div><label>申請日</label><input id='applyDate' type='date'></div><div><label>申請者</label><input id='applicant' oninput='rememberApplicant()' placeholder='初回入力後は自動表示'></div><div><label>出張開始日</label><input id='startDate' type='date' onchange='generateScheduleFromDates()'></div><div><label>出張終了日</label><input id='endDate' type='date' onchange='generateScheduleFromDates()'></div></div><div style='margin-top:10px'><label>要務内容（全体）</label><textarea id='purpose'></textarea></div></div>
-<div class='card'><div class='section-title'>① 出張日程・日当</div><div id='scheduleRows'></div><button class='btn secondary no-print' onclick='addSchedule()'>＋ 日程追加</button> <button class='btn secondary no-print' onclick='generateScheduleFromDates(true)'>開始日～終了日から日程作成</button><p class='note'>通常地域 8,000円／日、遠距離地域 10,000円／日。北海道・九州・沖縄を遠距離として初期判定します。個別変更も可能です。</p></div>
-<div class='card'><div class='section-title'>② 交通費</div><div id='transportRows'></div><button class='btn secondary no-print' onclick='addTransport()'>＋ 交通費追加</button><p class='note'>電車は出発駅・到着駅を別々に入力し「運賃検索」。飛行機・バス・タクシー・レンタカー等は旅程と実費を入力します。</p></div>
-<div class='card no-print'><div class='section-title'>駅すぱあと API 接続設定</div><div class='grid'><div class='wide'><label>アクセスキー</label><input id='ekKey' type='password' placeholder='取得したアクセスキーを貼り付け'></div><div><label>APIプラン</label><select id='ekPlan'><option value='standard'>評価版／スタンダード</option><option value='free'>フリープラン</option></select></div><div style='align-self:end'><button class='btn secondary' onclick='saveApiSettings()'>接続設定を保存</button></div></div><p class='note'>アクセスキーはこの端末のブラウザ内だけに保存します。キー未設定でも交通費は手入力できます。</p></div>
-<div class='card'><div class='section-title'>③ 宿泊費</div><div id='hotelRows'></div><button class='btn secondary no-print' onclick='addHotel()'>＋ 宿泊追加</button></div>
-<div class='card'><div class='section-title'>④ その他経費（交際費・懇親会費等）</div><div id='expenseRows'></div><button class='btn secondary no-print' onclick='addExpense()'>＋ 経費追加</button></div>
-<div class='card'><div class='section-title'>精算合計</div><div class='sum'><div>交通費<strong id='sumTransport'>0円</strong></div><div>宿泊費<strong id='sumHotel'>0円</strong></div><div>出張日当<strong id='sumDaily'>0円</strong></div><div>その他経費<strong id='sumExpense'>0円</strong></div><div>精算総額<strong id='sumTotal'>0円</strong></div></div></div>
-<div class='card no-print'><div class='actions'><button class='btn primary' onclick='saveRecord()'>保存</button><button class='btn secondary' onclick='window.print()'>PDF・印刷</button><button class='btn secondary' onclick='newRecord()'>新規</button><button class='btn secondary' onclick='exportJSON()'>バックアップJSON</button><label class='btn secondary'>復元JSON<input type='file' accept='.json' onchange='importJSON(event)' style='display:none'></label></div><p class='note'>データはこの端末のブラウザ内に保存します。Supabase共有版への接続は次版で追加できます。</p></div>
-<div class='card no-print'><div class='section-title'>保存履歴</div><div id='history'></div></div>
-</main><script>
-const $=id=>document.getElementById(id), yen=n=>(Number(n)||0).toLocaleString('ja-JP')+'円'; let currentId=null;
-function today(){return new Date().toISOString().slice(0,10)}
-function del(btn){btn.closest('.row').remove();calc()}
-function addSchedule(v={}){let d=document.createElement('div');d.className='row';d.innerHTML=`<div><label>日付</label><input class='sd' type='date' value='${v.date||''}'></div><div><label>用務地</label><input class='place' value='${v.place||''}' oninput='autoDaily(this)'></div><div><label>宿泊先</label><input class='stay' value='${v.stay||''}'><button type='button' class='btn secondary no-print' style='margin-top:5px;padding:6px 8px' onclick='copyPrevStay(this)'>前日コピー</button></div><div class='wide'><label>用務内容</label><input class='work' value='${v.work||''}'></div><div><label>日当</label><select class='daily' onchange='calc()'><option value='8000'>8,000円</option><option value='10000'>10,000円</option><option value='0'>なし</option></select></div><button class='btn danger no-print' onclick='del(this)'>削除</button>`; $('scheduleRows').appendChild(d); if(v.daily!=null)d.querySelector('.daily').value=v.daily; calc()}
-function rememberApplicant(){let v=$('applicant').value.trim();if(v)localStorage.setItem('travelApprovalApplicant',v)}
-function copyPrevStay(btn){let row=btn.closest('.row'),all=[...document.querySelectorAll('#scheduleRows .row')],i=all.indexOf(row);if(i>0)row.querySelector('.stay').value=all[i-1].querySelector('.stay').value}
-function generateScheduleFromDates(force=false){let a=$('startDate').value,b=$('endDate').value;if(!a||!b||b<a)return;let box=$('scheduleRows'),existing=[...box.querySelectorAll('.row')];if(existing.some(r=>r.querySelector('.sd').value||r.querySelector('.place').value||r.querySelector('.stay').value||r.querySelector('.work').value)&&!force)return;if(force)box.innerHTML='';else if(existing.length===1)box.innerHTML='';let d=new Date(a+'T00:00:00'),end=new Date(b+'T00:00:00');while(d<=end){addSchedule({date:d.toISOString().slice(0,10)});d.setDate(d.getDate()+1)}calc()}
-function autoDaily(inp){let s=inp.value;let far=/北海道|札幌|釧路|根室|帯広|函館|旭川|九州|福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄|那覇/.test(s); inp.closest('.row').querySelector('.daily').value=far?'10000':'8000';calc()}
-function addTransport(v={}){let d=document.createElement('div');d.className='row transportRow';d.innerHTML=`<div><label>日付</label><input class='td' type='date' value='${v.date||''}'></div><div><label>手段</label><select class='mode' onchange='modeChange(this)'><option>電車</option><option>飛行機</option><option>バス</option><option>タクシー</option><option>レンタカー</option><option>その他</option></select></div><div class='station fromBox'><label>出発駅</label><input class='fromStation' value='${v.fromStation||''}' placeholder='例：新高岡'></div><div class='station toBox'><label>到着駅</label><input class='toStation' value='${v.toStation||''}' placeholder='例：大阪'></div><div class='wide routeBox'><label>旅程</label><input class='route' value='${v.route||''}' placeholder='例：富山空港→新千歳空港'></div><div><label>領収書</label><select class='receipt'><option>あり</option><option>なし</option></select></div><div><label>金額</label><input class='amount' type='number' value='${v.amount||''}' oninput='calc()'></div><button type='button' class='btn secondary no-print searchFare' onclick='fareSearch(this)'>運賃検索</button><button type='button' class='btn danger no-print' onclick='del(this)'>削除</button>`;$('transportRows').appendChild(d);d.querySelector('.mode').value=v.mode||'電車';d.querySelector('.receipt').value=v.receipt||(d.querySelector('.mode').value==='電車'?'なし':'あり');modeChange(d.querySelector('.mode'));calc()}
-function modeChange(sel){let r=sel.closest('.row'),train=sel.value==='電車';r.querySelectorAll('.station').forEach(x=>x.style.display=train?'':'none');r.querySelector('.routeBox').style.display=train?'none':'';r.querySelector('.searchFare').style.display=train?'':'none';if(train&&r.querySelector('.receipt').value==='あり')r.querySelector('.receipt').value='なし'}
-function saveApiSettings(){localStorage.setItem('travelEkispertKey',$('ekKey').value.trim());localStorage.setItem('travelEkispertPlan',$('ekPlan').value);alert('駅すぱあとAPIの接続設定を保存しました')}
-function loadApiSettings(){if($('ekKey'))$('ekKey').value=localStorage.getItem('travelEkispertKey')||'';if($('ekPlan'))$('ekPlan').value=localStorage.getItem('travelEkispertPlan')||'standard'}
-async function fareSearch(btn){let r=btn.closest('.row'),from=r.querySelector('.fromStation').value.trim(),to=r.querySelector('.toStation').value.trim(),key=localStorage.getItem('travelEkispertKey')||'';if(!from||!to){alert('出発駅と到着駅を入力してください');return}if(!key){alert('先に「駅すぱあと API 接続設定」にアクセスキーを入力して保存してください。キー未取得の場合は金額を手入力できます。');return}btn.disabled=true;btn.textContent='検索中…';try{let url='https://api.ekispert.jp/v1/json/search/course/extreme?key='+encodeURIComponent(key)+'&viaList='+encodeURIComponent(from+':'+to);let res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);let j=await res.json(),routes=j.ResultSet&&j.ResultSet.Course?(Array.isArray(j.ResultSet.Course)?j.ResultSet.Course:[j.ResultSet.Course]):[];if(!routes.length)throw new Error('経路が見つかりません');let opts=routes.slice(0,5).map((c,i)=>{let p=c.Price?(Array.isArray(c.Price)?c.Price:[c.Price]):[];let fare=p.find(x=>x.kind==='FareSummary')||p.find(x=>x.Oneway)||p[0]||{};let amount=Number(fare.Oneway||fare.Round||fare.Price||0);return {i,amount}}).filter(x=>x.amount>0);if(!opts.length)throw new Error('運賃を取得できません');let msg=opts.map((x,n)=>(n+1)+'：'+x.amount.toLocaleString('ja-JP')+'円').join('\n');let pick=prompt('運賃候補です。利用した候補番号を入力してください。\n'+msg,'1');if(pick===null)return;let x=opts[Number(pick)-1];if(!x){alert('候補番号を確認してください');return}r.querySelector('.amount').value=x.amount;r.querySelector('.route').value=from+'→'+to;calc()}catch(e){alert('運賃検索に失敗しました。アクセスキー・プラン・駅名を確認してください。\n'+e.message+'\n\n金額は手入力できます。')}finally{btn.disabled=false;btn.textContent='運賃検索'}}
-function addHotel(v={}){let d=document.createElement('div');d.className='row';d.innerHTML=`<div><label>開始日</label><input class='hf' type='date' value='${v.from||''}'></div><div><label>終了日</label><input class='ht' type='date' value='${v.to||''}'></div><div class='wide'><label>宿泊先</label><input class='hn' value='${v.name||''}'></div><div><label>領収書</label><select class='hr'><option>あり</option><option>なし</option></select></div><div><label>金額</label><input class='ha' type='number' value='${v.amount||''}' oninput='calc()'></div><button class='btn danger no-print' onclick='del(this)'>削除</button>`;$('hotelRows').appendChild(d);d.querySelector('.hr').value=v.receipt||'あり';calc()}
-function addExpense(v={}){let d=document.createElement('div');d.className='row';d.innerHTML=`<div><label>日付</label><input class='ed' type='date' value='${v.date||''}'></div><div><label>科目</label><select class='ec'><option>交際費</option><option>懇親会費</option><option>会議費</option><option>その他</option></select></div><div><label>相手先</label><input class='ep' value='${v.party||''}'></div><div><label>人数</label><input class='en' type='number' value='${v.people||''}'></div><div class='wide'><label>目的・摘要</label><input class='em' value='${v.memo||''}'></div><div><label>領収書</label><select class='er'><option>あり</option><option>なし</option></select></div><div><label>金額</label><input class='ea' type='number' value='${v.amount||''}' oninput='calc()'></div><button class='btn danger no-print' onclick='del(this)'>削除</button>`;$('expenseRows').appendChild(d);d.querySelector('.ec').value=v.category||'交際費';d.querySelector('.er').value=v.receipt||'あり';calc()}
-function calc(){let sum=c=>[...document.querySelectorAll(c)].reduce((a,x)=>a+(Number(x.value)||0),0),t=sum('.amount'),h=sum('.ha'),d=sum('.daily'),e=sum('.ea');$('sumTransport').textContent=yen(t);$('sumHotel').textContent=yen(h);$('sumDaily').textContent=yen(d);$('sumExpense').textContent=yen(e);$('sumTotal').textContent=yen(t+h+d+e)}
-function rows(sel,fn){return [...document.querySelectorAll(sel+' .row')].map(fn)}
-function data(){return{id:currentId||Date.now(),applyDate:$('applyDate').value,applicant:$('applicant').value,startDate:$('startDate').value,endDate:$('endDate').value,purpose:$('purpose').value,schedules:rows('#scheduleRows',r=>({date:r.querySelector('.sd').value,place:r.querySelector('.place').value,stay:r.querySelector('.stay').value,work:r.querySelector('.work').value,daily:r.querySelector('.daily').value})),transport:rows('#transportRows',r=>({date:r.querySelector('.td').value,mode:r.querySelector('.mode').value,fromStation:r.querySelector('.fromStation').value,toStation:r.querySelector('.toStation').value,route:r.querySelector('.route').value,receipt:r.querySelector('.receipt').value,amount:r.querySelector('.amount').value})),hotels:rows('#hotelRows',r=>({from:r.querySelector('.hf').value,to:r.querySelector('.ht').value,name:r.querySelector('.hn').value,receipt:r.querySelector('.hr').value,amount:r.querySelector('.ha').value})),expenses:rows('#expenseRows',r=>({date:r.querySelector('.ed').value,category:r.querySelector('.ec').value,party:r.querySelector('.ep').value,people:r.querySelector('.en').value,memo:r.querySelector('.em').value,receipt:r.querySelector('.er').value,amount:r.querySelector('.ea').value}))}}
-function getAll(){return JSON.parse(localStorage.getItem('travelApprovalRecords')||'[]')}function saveRecord(){let x=data(),a=getAll(),i=a.findIndex(z=>z.id===x.id);if(i>=0)a[i]=x;else a.unshift(x);localStorage.setItem('travelApprovalRecords',JSON.stringify(a));currentId=x.id;renderHistory();alert('保存しました')}
-function loadRecord(id){let x=getAll().find(z=>z.id===id);if(!x)return;newRecord(false);currentId=x.id;['applyDate','applicant','startDate','endDate','purpose'].forEach(k=>$(k).value=x[k]||'');(x.schedules||[]).forEach(addSchedule);(x.transport||[]).forEach(addTransport);(x.hotels||[]).forEach(addHotel);(x.expenses||[]).forEach(addExpense);calc();scrollTo(0,0)}
-function removeRecord(id){if(!confirm('この履歴を削除しますか？'))return;localStorage.setItem('travelApprovalRecords',JSON.stringify(getAll().filter(x=>x.id!==id)));renderHistory()}
-function newRecord(seed=true){currentId=null;['scheduleRows','transportRows','hotelRows','expenseRows'].forEach(id=>$(id).innerHTML='');['startDate','endDate','purpose'].forEach(id=>$(id).value='');$('applicant').value=localStorage.getItem('travelApprovalApplicant')||'';$('applyDate').value=today();if(seed){addSchedule();addTransport();addHotel();addExpense()}calc()}
-function renderHistory(){let a=getAll();$('history').innerHTML=a.length?a.map(x=>`<div style='padding:9px;border-bottom:1px solid #ddd'><b>${x.startDate||'日付未入力'} ${x.applicant||''}</b>　${x.purpose||''} <button class='btn secondary' onclick='loadRecord(${x.id})'>開く</button> <button class='btn danger' onclick='removeRecord(${x.id})'>削除</button></div>`).join(''):'保存履歴はありません'}
-function exportJSON(){let b=new Blob([JSON.stringify(getAll(),null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='出張承認伺バックアップ.json';a.click()}
-function importJSON(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!Array.isArray(x))throw 0;localStorage.setItem('travelApprovalRecords',JSON.stringify(x));renderHistory();alert('復元しました')}catch{alert('JSON形式を確認してください')}};r.readAsText(f)}
-$('applyDate').value=today();newRecord();renderHistory();loadApiSettings();if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-</script></body></html>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>業務管理ポータル</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+*{box-sizing:border-box} body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f5f6f8;color:#111}
+header{position:sticky;top:0;background:#fff;padding:14px 16px;border-bottom:1px solid #ddd;z-index:2}
+h1{font-size:20px;margin:0} .wrap{padding:14px;max-width:900px;margin:auto}
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px #0001}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px} button{font-size:16px;padding:14px;border:1px solid #ccc;border-radius:12px;background:#fff}
+button.primary{background:#111;color:#fff} input{width:100%;padding:12px;margin:5px 0;border:1px solid #ccc;border-radius:10px;font-size:16px}
+.small{font-size:13px;color:#666} .num{font-size:26px;font-weight:700} table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{display:none} .tabs{display:flex;gap:7px;overflow:auto;padding-bottom:8px}
+.tabs button{white-space:nowrap;padding:9px 12px;font-size:14px} .warn{background:#fff7dc} .ok{background:#eef9ef}
+</style>
+</head>
+<body>
+<header><h1>業務管理ポータル <span class="small">v0.7.2</span></h1><div id="user" class="small"></div></header>
+<div class="wrap">
+<section id="login" class="card">
+<h2>ログイン</h2><input id="email" type="email" placeholder="メールアドレス"><input id="password" type="password" placeholder="パスワード">
+<button class="primary" onclick="login()">ログイン</button><div id="loginmsg" class="small"></div>
+</section>
+<section id="app" class="hidden">
+<div class="card"><div class="grid">
+<div><div class="small">実在庫</div><div id="physical" class="num">-</div></div>
+<div><div class="small">予約在庫</div><div id="reserved" class="num">-</div></div>
+<div><div class="small">出荷可能</div><div id="available" class="num">-</div></div>
+<div><div class="small">商品数</div><div id="productCount" class="num">-</div></div>
+</div><div class="small" id="synced"></div></div>
+<div class="tabs">
+<button onclick="show('home')">🏠 トップ</button><button onclick="show('quotes')">見積閲覧</button><button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
+<button onclick="show('shipmentNew')">新規出荷依頼</button><button onclick="show('shipments')">出荷依頼一覧</button><button onclick="show('transport')">運送依頼</button>
+<button onclick="show('warehouses')">営業倉庫</button>
+</div>
+<div id="content" class="card">読み込み中...</div>
+<div class="card small">通信量対策：必要な列だけ取得し、履歴は最新50件を基本表示します。PDFは自動取得しません。</div>
+</section>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb=supabase.createClient("https://crltrozxztivkyxtjjxv.supabase.co","sb_publishable_znOVYKMnJiZuxrsXPaLPxA_EbUdenvN");
+let D={products:[],balances:[],moves:[],shipments:[],transport:[],warehouses:[]};
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+async function login(){
+ const email=document.getElementById('email').value.trim(), password=document.getElementById('password').value;
+ const {error}=await sb.auth.signInWithPassword({email,password});
+ if(error) return document.getElementById('loginmsg').textContent=error.message;
+ start();
+}
+async function start(){
+ const {data:{user}}=await sb.auth.getUser(); if(!user)return;
+ document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
+ document.getElementById('user').textContent=user.email||'';
+ await loadAll(); show('inventory');
+}
+async function q(table,select,opts={}){
+ let x=sb.from(table).select(select);
+ if(opts.order)x=x.order(opts.order,{ascending:false});
+ if(opts.limit)x=x.limit(opts.limit);
+ const {data,error}=await x;if(error)throw error;return data||[];
+}
+async function loadAll(){
+ try{
+  const jobs=[
+   ['products',q('bp_products','id,code,product_group,name,standard_kg,min_quantity,active,updated_at')],
+   ['balances',q('bp_inventory_balances','product_id,production_year,quantity,kg_quantity,reserved_quantity,updated_at')],
+   ['moves',q('bp_stock_movements','id,product_id,movement_type,quantity,production_year,kg_quantity,partner,note,occurred_at',{order:'occurred_at',limit:50})],
+   ['shipments',q('bp_shipment_requests','id,request_no,request_type,request_date,shipment_date,ship_from,ship_to,status,note,updated_at',{order:'request_date',limit:50})],
+   ['transport',q('pi_transport_requests','id,no,request_date,carrier_name,carrier_fax,data,updated_at',{order:'request_date',limit:50})],
+   ['warehouses',q('bp_warehouses','id,name,address,phone,fax,active,updated_at')],
+   ['quotes',q('bp_quotes','id,quote_id,quote_date,customer,contact_person,total,status,items,pdf_path,updated_at',{order:'quote_date',limit:100})]
+  ];
+  const rs=await Promise.allSettled(jobs.map(x=>x[1]));
+  let errors=[];
+  rs.forEach((r,i)=>{if(r.status==='fulfilled')D[jobs[i][0]]=r.value;else errors.push(jobs[i][0]+': '+r.reason.message)});
+  if(errors.length) console.warn('部分読込エラー',errors);
+  const p=D.balances.reduce((a,b)=>a+Number(b.quantity||0),0), r=D.balances.reduce((a,b)=>a+Number(b.reserved_quantity||0),0);
+  physical.textContent=p.toLocaleString()+'個';reserved.textContent=r.toLocaleString()+'個';available.textContent=(p-r).toLocaleString()+'個';
+  productCount.textContent=D.products.length+'件'; synced.textContent='最終読込 '+new Date().toLocaleString('ja-JP');
+ }catch(e){content.innerHTML='<div class="warn">読込エラー：'+esc(e.message)+'</div>';}
+}
+function pname(id){let p=D.products.find(x=>x.id===id);return p?`${p.code} ${p.name}`:''}
+function calcKg(){
+ const s=document.getElementById('rproduct'),q=Number(document.getElementById('rqty')?.value||0);
+ if(!s)return; const kg=Number(s.options[s.selectedIndex]?.dataset.kg||0);
+ document.getElementById('rkg').value=q&&kg?q*kg:'';
+}
+async function registerReceipt(){
+ const btn=event.currentTarget,msg=document.getElementById('rmsg');
+ const product=document.getElementById('rproduct').value, year=Number(document.getElementById('ryear').value),
+ qty=Number(document.getElementById('rqty').value), kg=Number(document.getElementById('rkg').value||0),
+ partner=document.getElementById('rpartner').value.trim(), note=document.getElementById('rnote').value.trim(),
+ date=document.getElementById('rdate').value;
+ if(!product||!date||!year||!Number.isFinite(qty)||qty<=0){msg.textContent='入庫日・商品・年産・個数を確認してください。';return}
+ if(!confirm(`入庫を登録します。\n個数：${qty}個\n重量：${kg}kg`))return;
+ btn.disabled=true;msg.textContent='登録中...';
+ const {error}=await sb.rpc('bp_register_inventory_receipt',{p_product_id:product,p_production_year:year,p_quantity:qty,p_kg_quantity:kg,p_partner:partner,p_note:note,p_occurred_date:date});
+ btn.disabled=false;
+ if(error){msg.textContent='登録エラー：'+error.message;return}
+ msg.textContent='登録しました。'; await loadAll(); show('inventory');
+}
+let shipItems=[];
+function shipAvail(){
+ const p=document.getElementById('sproduct')?.value,y=Number(document.getElementById('syear')?.value);
+ const b=D.balances.find(x=>x.product_id===p&&Number(x.production_year)===y);
+ const a=b?Number(b.quantity||0)-Number(b.reserved_quantity||0):0;
+ const el=document.getElementById('savail');if(el)el.textContent='出荷可能在庫：'+a+'個';
+}
+function shipCalc(){
+ const s=document.getElementById('sproduct'),q=Number(document.getElementById('sqty')?.value||0);if(!s)return;
+ const kg=Number(s.options[s.selectedIndex]?.dataset.kg||0);document.getElementById('skg').value=q&&kg?q*kg:'';shipAvail();
+}
+function addShipItem(){
+ const s=document.getElementById('sproduct'),year=Number(document.getElementById('syear').value),qty=Number(document.getElementById('sqty').value),kg=Number(document.getElementById('skg').value||0);
+ if(!s.value||!year||qty<=0)return alert('商品・年産・個数を確認してください。');
+ const b=D.balances.find(x=>x.product_id===s.value&&Number(x.production_year)===year),avail=b?Number(b.quantity||0)-Number(b.reserved_quantity||0):0;
+ const already=shipItems.filter(x=>x.product_id===s.value&&x.production_year===year).reduce((a,x)=>a+x.quantity,0);
+ if(qty+already>avail)return alert('出荷可能在庫を超えています。');
+ shipItems.push({product_id:s.value,production_year:year,quantity:qty,kg_quantity:kg,source_name:s.options[s.selectedIndex].text});
+ renderShipItems();
+}
+function renderShipItems(){
+ const el=document.getElementById('sitems');if(!el)return;
+ el.innerHTML=shipItems.length?'<table><tr><th>商品</th><th>年産</th><th>個数</th><th></th></tr>'+shipItems.map((x,i)=>`<tr><td>${esc(x.source_name)}</td><td>${x.production_year}</td><td>${x.quantity}</td><td><button onclick="shipItems.splice(${i},1);renderShipItems()">削除</button></td></tr>`).join('')+'</table>':'<div class="small">明細はまだありません。</div>';
+}
+async function saveShipment(){
+ const msg=document.getElementById('smsg'),date=document.getElementById('sdate').value,to=document.getElementById('sto').value.trim();
+ if(!date||!to||!shipItems.length){msg.textContent='出荷日・出荷先・商品明細を確認してください。';return}
+ if(!confirm('出荷依頼を予約登録します。実在庫はまだ減りません。'))return;
+ const {error}=await sb.rpc('bp_create_shipment_reservation',{p_request_type:'SHIPMENT',p_request_date:document.getElementById('sreqdate').value,p_shipment_date:date,p_ship_from:document.getElementById('sfrom').value,p_ship_to:to,p_note:document.getElementById('snote').value.trim(),p_items:shipItems});
+ if(error){msg.textContent='登録エラー：'+error.message;return}
+ shipItems=[];msg.textContent='予約登録しました。';await loadAll();show('shipments');
+}
+async function completeShipment(id){
+ if(!confirm('出荷完了にします。\n予約在庫を解除し、実在庫を減算します。'))return;
+ const {error}=await sb.rpc('bp_complete_shipment',{p_shipment_id:id});
+ if(error){alert('出荷完了エラー：'+error.message);return}
+ await loadAll();show('shipments');alert('出荷完了しました。');
+}
+async function cancelShipment(id){
+ if(!confirm('この出荷依頼を取消します。\n実在庫は減らさず、予約在庫だけを解除します。'))return;
+ const {error}=await sb.rpc('bp_cancel_shipment',{p_shipment_id:id});
+ if(error){alert('取消エラー：'+error.message);return}
+ await loadAll();show('shipments');alert('取消しました。');
+}
+function yen(v){return Number(v||0).toLocaleString('ja-JP')}
+function renderQuoteList(){
+ const el=document.getElementById('qlist');if(!el)return;
+ const s=(document.getElementById('qsearch')?.value||'').toLowerCase();
+ const a=(D.quotes||[]).filter(q=>{
+   const item=(q.items||[]).map(x=>x.name||'').join(' ');
+   return !s||[q.quote_id,q.customer,q.contact_person,q.status,item].join(' ').toLowerCase().includes(s);
+ });
+ el.innerHTML=a.length?a.map(q=>`<div class="card" style="margin:10px 0;padding:14px" onclick="quoteDetail('${q.id}')"><b>${esc(q.quote_date||'')}　${esc(q.customer||'得意先未入力')}</b><br><span class="small">${esc(q.quote_id)}　${esc(q.status||'')}　${q.total?('￥'+yen(q.total)):''}</span></div>`).join(''):'<div class="small">該当する見積はありません。</div>';
+}
+function quoteDetail(id){
+ const q=(D.quotes||[]).find(x=>x.id===id);if(!q)return;
+ const rows=(q.items||[]).map(x=>`<tr><td>${esc(x.name||'')}</td><td>${esc(x.unit||'')}</td><td>${esc(x.count||'')}</td><td>${esc(x.quantity||'')}</td><td>${esc(x.unitPrice||'')}</td><td>${esc(x.amount||'')}</td></tr>`).join('');
+ content.innerHTML=`<button onclick="show('quotes')">← 見積一覧へ</button><h2>${esc(q.customer||'得意先未入力')}</h2>
+ <div>見積番号：${esc(q.quote_id)}<br>見積日：${esc(q.quote_date||'')}<br>担当者：${esc(q.contact_person||'')}<br>状態：${esc(q.status||'')}<br>合計：${q.total?'￥'+yen(q.total):'－'}</div>
+ <div style="overflow:auto"><table><tr><th>商品</th><th>単位</th><th>入数</th><th>数量</th><th>単価</th><th>金額</th></tr>${rows}</table></div>
+ <div class="small">PDFは現在PC保存のため、次の段階で「PDFを見る」を追加します。</div>`;
+}
+async function importQuotes(){
+ const f=document.getElementById('qfile')?.files?.[0],msg=document.getElementById('qmsg');if(!f){msg.textContent='quotes.jsonを選択してください。';return}
+ let a;try{a=JSON.parse(await f.text())}catch(e){msg.textContent='JSONを読み込めません。';return}
+ if(!Array.isArray(a)){msg.textContent='見積データ形式を確認してください。';return}
+ const {data:{user}}=await sb.auth.getUser();if(!user){msg.textContent='ログインを確認してください。';return}
+ const rows=a.map(x=>({owner_id:user.id,quote_id:x.quoteId,quote_date:x.quoteDate||null,customer:x.customer||'',contact_person:x.contactPerson||'',total:Number(x.total||0),status:x.status||'',xlsx_path:x.xlsxPath||'',pdf_path:x.pdfPath||'',items:Array.isArray(x.items)?x.items:[],source_data:x,created_at:x.createdAt||new Date().toISOString(),updated_at:x.updatedAt||new Date().toISOString()}));
+ const {error}=await sb.from('bp_quotes').upsert(rows,{onConflict:'owner_id,quote_id'});
+ if(error){msg.textContent='取込エラー：'+error.message;return}
+ msg.textContent=rows.length+'件を取り込みました。';await loadAll();show('quotes');
+}
+function show(k){
+ let h='';
+ if(k==='home'){
+  h=`<h2>業務を選択</h2>
+  <div class="grid" style="margin-top:12px">
+    <button class="primary" onclick="show('inventory')">📦 商品在庫管理</button>
+    <button onclick="show('quotes')">📄 見積閲覧</button>
+    <button onclick="show('shipmentNew')">🚚 出荷依頼</button>
+    <button onclick="show('transport')">🚛 運送依頼</button>
+    <button onclick="location.href='https://mdaidai0503.github.io/travel-approval-app/'">🧳 出張承認伺</button>
+    <button onclick="show('warehouses')">🏢 営業倉庫</button>
+  </div>
+  <div class="small" style="margin-top:14px">出張承認伺は業務管理ポータルから開きます。</div>`;
+ } else if(k==='inventory'){
+  h='<h2>商品・在庫</h2><table><tr><th>商品</th><th>年産</th><th>実在庫</th><th>予約</th><th>出荷可能</th></tr>';
+  for(const b of D.balances)h+=`<tr><td>${esc(pname(b.product_id))}</td><td>${esc(b.production_year)}</td><td>${Number(b.quantity||0)}</td><td>${Number(b.reserved_quantity||0)}</td><td>${Number(b.quantity||0)-Number(b.reserved_quantity||0)}</td></tr>`;
+  h+='</table>';
+ } else if(k==='receipt'){
+  const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
+  h=`<h2>入庫登録</h2>
+  <div class="small">登録すると入出庫履歴と実在庫を同時に更新します。</div>
+  <label>入庫日</label><input id="rdate" type="date" value="${new Date().toLocaleDateString('sv-SE')}">
+  <label>商品</label><select id="rproduct" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;font-size:16px" onchange="calcKg()">${opts}</select>
+  <label>年産</label><input id="ryear" type="number" value="${new Date().getFullYear()}">
+  <label>個数</label><input id="rqty" type="number" min="1" step="1" oninput="calcKg()">
+  <label>kg</label><input id="rkg" type="number" min="0" step="0.01">
+  <label>相手先</label><input id="rpartner" type="text">
+  <label>備考</label><input id="rnote" type="text">
+  <button class="primary" onclick="registerReceipt()">入庫を登録</button><div id="rmsg" class="small"></div>`;
+ } else if(k==='moves'){
+  h='<h2>入出庫履歴（最新50件）</h2><table><tr><th>日付</th><th>商品</th><th>年産</th><th>個数</th><th>相手先</th></tr>';
+  for(const x of D.moves)h+=`<tr><td>${esc((x.occurred_at||'').slice(0,10))}</td><td>${esc(pname(x.product_id))}</td><td>${esc(x.production_year)}</td><td>${Number(x.quantity||0)}</td><td>${esc(x.partner)}</td></tr>`; h+='</table>';
+ } else if(k==='shipmentNew'){
+  const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
+  const wh=D.warehouses.map(x=>`<option>${esc(x.name)}</option>`).join('');
+  h=`<h2>新規出荷依頼</h2><div class="small">確定時は実在庫を減らさず、予約在庫だけを増やします。</div>
+  <label>依頼日</label><input id="sreqdate" type="date" value="${new Date().toLocaleDateString('sv-SE')}">
+  <label>出荷日</label><input id="sdate" type="date">
+  <label>出荷元</label><select id="sfrom" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;font-size:16px">${wh}</select>
+  <label>出荷先</label><input id="sto" type="text">
+  <label>備考</label><input id="snote" type="text">
+  <hr><b>商品明細</b>
+  <label>商品</label><select id="sproduct" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;font-size:16px" onchange="shipCalc()">${opts}</select>
+  <label>年産</label><input id="syear" type="number" value="${new Date().getFullYear()}" oninput="shipAvail()">
+  <div id="savail" class="small"></div>
+  <label>個数</label><input id="sqty" type="number" min="1" step="1" oninput="shipCalc()">
+  <label>kg</label><input id="skg" type="number" min="0" step="0.01">
+  <button onclick="addShipItem()">明細に追加</button>
+  <div id="sitems"></div>
+  <button class="primary" onclick="saveShipment()">出荷依頼を予約登録</button><div id="smsg" class="small"></div>`;
+  setTimeout(shipAvail,0);
+ } else if(k==='shipments'){
+  h='<h2>出荷依頼</h2><table><tr><th>出荷日</th><th>番号</th><th>出荷先</th><th>状態</th><th>操作</th></tr>';
+  for(const x of D.shipments){
+   const actions=x.status==='RESERVED'
+    ? `<button onclick="completeShipment('${x.id}')">出荷完了</button> <button onclick="cancelShipment('${x.id}')">取消</button>`
+    : '';
+   h+=`<tr><td>${esc(x.shipment_date)}</td><td>${esc(x.request_no)}</td><td>${esc(x.ship_to)}</td><td>${esc(x.status)}</td><td>${actions}</td></tr>`;
+  }h+='</table>';
+ } else if(k==='transport'){
+  h='<h2>運送依頼</h2><table><tr><th>依頼日</th><th>番号</th><th>運送会社</th><th>納品先</th></tr>';
+  for(const x of D.transport)h+=`<tr><td>${esc(x.request_date)}</td><td>${esc(x.no)}</td><td>${esc(x.carrier_name)}</td><td>${esc(x.data?.deliveryName)}</td></tr>`;h+='</table>';
+ } else {
+  h='<h2>営業倉庫</h2>'; for(const x of D.warehouses)h+=`<div class="card"><b>${esc(x.name)}</b><br>${esc(x.address)}<br>TEL ${esc(x.phone)} / FAX ${esc(x.fax)}</div>`;
+ }
+ content.innerHTML=h;
+}
+sb.auth.getSession().then(({data})=>{if(data.session)start()});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7.2');
+</script>
+</body></html>
