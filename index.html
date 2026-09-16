@@ -21,7 +21,7 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 </style>
 </head>
 <body>
-<header><h1>業務管理ポータル <span class="small">v0.7.2</span></h1><div id="user" class="small"></div></header>
+<header><h1>業務管理ポータル <span class="small">v0.7.3</span></h1><div id="user" class="small"></div></header>
 <div class="wrap">
 <section id="login" class="card">
 <h2>ログイン</h2><input id="email" type="email" placeholder="メールアドレス"><input id="password" type="password" placeholder="パスワード">
@@ -46,7 +46,7 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const sb=supabase.createClient("https://crltrozxztivkyxtjjxv.supabase.co","sb_publishable_znOVYKMnJiZuxrsXPaLPxA_EbUdenvN");
-let D={products:[],balances:[],moves:[],shipments:[],transport:[],warehouses:[]};
+let D={products:[],balances:[],moves:[],shipments:[],transport:[],warehouses:[],quotes:[]};
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 async function login(){
  const email=document.getElementById('email').value.trim(), password=document.getElementById('password').value;
@@ -212,7 +212,7 @@ function show(k){
   for(const x of D.moves)h+=`<tr><td>${esc((x.occurred_at||'').slice(0,10))}</td><td>${esc(pname(x.product_id))}</td><td>${esc(x.production_year)}</td><td>${Number(x.quantity||0)}</td><td>${esc(x.partner)}</td></tr>`; h+='</table>';
  } else if(k==='shipmentNew'){
   const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
-  const wh=D.warehouses.map(x=>`<option>${esc(x.name)}</option>`).join('');
+  const wh=D.warehouses.map(x=>`<option>${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
   h=`<h2>新規出荷依頼</h2><div class="small">確定時は実在庫を減らさず、予約在庫だけを増やします。</div>
   <label>依頼日</label><input id="sreqdate" type="date" value="${new Date().toLocaleDateString('sv-SE')}">
   <label>出荷日</label><input id="sdate" type="date">
@@ -241,11 +241,11 @@ function show(k){
   h='<h2>運送依頼</h2><table><tr><th>依頼日</th><th>番号</th><th>運送会社</th><th>納品先</th></tr>';
   for(const x of D.transport)h+=`<tr><td>${esc(x.request_date)}</td><td>${esc(x.no)}</td><td>${esc(x.carrier_name)}</td><td>${esc(x.data?.deliveryName)}</td></tr>`;h+='</table>';
  } else {
-  h='<h2>営業倉庫</h2>'; for(const x of D.warehouses)h+=`<div class="card"><b>${esc(x.name)}</b><br>${esc(x.address)}<br>TEL ${esc(x.phone)} / FAX ${esc(x.fax)}</div>`;
+  h='<h2>営業倉庫</h2>'; for(const x of D.warehouses)h+=`<div class="card"><b>${esc(x.name==='B'?'福建B':x.name)}</b><br>${esc(x.address)}<br>TEL ${esc(x.phone)} / FAX ${esc(x.fax)}</div>`;
  }
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7.2');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7.3');
 </script>
 </body></html>

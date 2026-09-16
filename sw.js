@@ -1,4 +1,4 @@
-const CACHE='business-portal-v072';
+const CACHE='business-portal-v073';
 const ASSETS=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',e=>{
   self.skipWaiting();
