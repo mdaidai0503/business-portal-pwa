@@ -35,9 +35,8 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 <div><div class="small">商品数</div><div id="productCount" class="num">-</div></div>
 </div><div class="small" id="synced"></div></div>
 <div class="tabs">
-<button onclick="show('quotes')">見積閲覧</button><button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
+<button onclick="show('home')">トップ</button><button onclick="show('quotes')">見積閲覧</button><button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
 <button onclick="show('shipmentNew')">新規出荷依頼</button><button onclick="show('shipments')">出荷依頼一覧</button><button onclick="show('transport')">運送依頼</button>
-<button onclick="show('warehouses')">営業倉庫</button>
 </div>
 <div id="content" class="card">読み込み中...</div>
 <div class="card small">通信量対策：必要な列だけ取得し、履歴は最新50件を基本表示します。PDFは自動取得しません。</div>
@@ -187,18 +186,14 @@ function show(k){
     <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('inventory')">商品・在庫管理</button>
     <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('quotes')">見積管理</button>
     <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('shipments')">出荷依頼</button>
-    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('warehouses')">営業倉庫</button>
   </div>
-  <div class="small" style="margin-top:20px">運送依頼・FAXBOXは既存機能を壊さず、順次このトップ画面へ整理します。</div>`;
+  <div class="small" style="margin-top:20px">FAXBOXなどは既存機能を壊さず、必要に応じて順次整理します。</div>`;
  } else if(k==='quotes'){
   const qs=(D.quotes||[]);
   h=`<h2>見積閲覧</h2>
   <input id="qsearch" type="search" placeholder="得意先・見積番号・商品名で検索" oninput="renderQuoteList()">
   <div id="qlist"></div>
-  <details style="margin-top:18px"><summary>PCの見積データを取り込む</summary>
-  <div class="small">PCの quotes.json を選択すると、Supabaseへコピーします。元ファイルは変更しません。</div>
-  <input id="qfile" type="file" accept=".json,application/json">
-  <button onclick="importQuotes()">quotes.jsonを取り込む</button><div id="qmsg" class="small"></div></details>`;
+  <div class="small" style="margin-top:16px">PC版で保存・更新した見積はSupabase経由で共有されます。画面を開き直すと最新データを読み込みます。</div>`;
   setTimeout(renderQuoteList,0);
  } else if(k==='inventory'){
   h='<h2>商品・在庫</h2><table><tr><th>商品</th><th>年産</th><th>実在庫</th><th>予約</th><th>出荷可能</th></tr>';
@@ -261,6 +256,6 @@ function show(k){
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7.1');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7.3');
 </script>
 </body></html>
