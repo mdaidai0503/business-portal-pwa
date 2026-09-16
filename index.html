@@ -21,7 +21,7 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 </style>
 </head>
 <body>
-<header><h1>業務管理ポータル <span class="small">v0.7.3</span></h1><div id="user" class="small"></div></header>
+<header><h1>業務管理ポータル</h1><div id="user" class="small"></div></header>
 <div class="wrap">
 <section id="login" class="card">
 <h2>ログイン</h2><input id="email" type="email" placeholder="メールアドレス"><input id="password" type="password" placeholder="パスワード">
@@ -35,7 +35,7 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 <div><div class="small">商品数</div><div id="productCount" class="num">-</div></div>
 </div><div class="small" id="synced"></div></div>
 <div class="tabs">
-<button onclick="show('home')">🏠 トップ</button><button onclick="show('quotes')">見積閲覧</button><button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
+<button onclick="show('quotes')">見積閲覧</button><button onclick="show('inventory')">商品・在庫</button><button onclick="show('receipt')">入庫登録</button><button onclick="show('moves')">入出庫履歴</button>
 <button onclick="show('shipmentNew')">新規出荷依頼</button><button onclick="show('shipments')">出荷依頼一覧</button><button onclick="show('transport')">運送依頼</button>
 <button onclick="show('warehouses')">営業倉庫</button>
 </div>
@@ -46,7 +46,7 @@ th,td{padding:8px 5px;border-bottom:1px solid #eee;text-align:left} .hidden{disp
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const sb=supabase.createClient("https://crltrozxztivkyxtjjxv.supabase.co","sb_publishable_znOVYKMnJiZuxrsXPaLPxA_EbUdenvN");
-let D={products:[],balances:[],moves:[],shipments:[],transport:[],warehouses:[],quotes:[]};
+let D={products:[],balances:[],moves:[],shipments:[],transport:[],warehouses:[]};
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 async function login(){
  const email=document.getElementById('email').value.trim(), password=document.getElementById('password').value;
@@ -58,7 +58,7 @@ async function start(){
  const {data:{user}}=await sb.auth.getUser(); if(!user)return;
  document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
  document.getElementById('user').textContent=user.email||'';
- await loadAll(); show('inventory');
+ await loadAll(); show('home');
 }
 async function q(table,select,opts={}){
  let x=sb.from(table).select(select);
@@ -86,7 +86,7 @@ async function loadAll(){
   productCount.textContent=D.products.length+'件'; synced.textContent='最終読込 '+new Date().toLocaleString('ja-JP');
  }catch(e){content.innerHTML='<div class="warn">読込エラー：'+esc(e.message)+'</div>';}
 }
-function pname(id){let p=D.products.find(x=>x.id===id);return p?`${p.code} ${p.name}`:''}
+function pname(id){let p=D.products.find(x=>x.id===id);if(!p)return '';let n=(p.name==='B'?'福建B':p.name);return `${p.code} ${n}`}
 function calcKg(){
  const s=document.getElementById('rproduct'),q=Number(document.getElementById('rqty')?.value||0);
  if(!s)return; const kg=Number(s.options[s.selectedIndex]?.dataset.kg||0);
@@ -181,19 +181,34 @@ async function importQuotes(){
 function show(k){
  let h='';
  if(k==='home'){
-  h=`<h2>業務を選択</h2>
-  <div class="grid" style="margin-top:12px">
-    <button class="primary" onclick="show('inventory')">📦 商品在庫管理</button>
-    <button onclick="show('quotes')">📄 見積閲覧</button>
-    <button onclick="show('shipmentNew')">🚚 出荷依頼</button>
-    <button onclick="show('transport')">🚛 運送依頼</button>
-    <button onclick="location.href='https://mdaidai0503.github.io/travel-approval-app/'">🧳 出張承認伺</button>
-    <button onclick="show('warehouses')">🏢 営業倉庫</button>
+  h=`<h2>業務管理ポータル</h2>
+  <div class="small" style="margin-bottom:18px">使用する業務を選択してください。</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('inventory')">商品・在庫管理</button>
+    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('quotes')">見積管理</button>
+    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('shipments')">出荷依頼</button>
+    <button style="min-height:110px;font-size:22px;font-weight:700" onclick="show('warehouses')">営業倉庫</button>
   </div>
-  <div class="small" style="margin-top:14px">出張承認伺は業務管理ポータルから開きます。</div>`;
+  <div class="small" style="margin-top:20px">運送依頼・FAXBOXは既存機能を壊さず、順次このトップ画面へ整理します。</div>`;
+ } else if(k==='quotes'){
+  const qs=(D.quotes||[]);
+  h=`<h2>見積閲覧</h2>
+  <input id="qsearch" type="search" placeholder="得意先・見積番号・商品名で検索" oninput="renderQuoteList()">
+  <div id="qlist"></div>
+  <details style="margin-top:18px"><summary>PCの見積データを取り込む</summary>
+  <div class="small">PCの quotes.json を選択すると、Supabaseへコピーします。元ファイルは変更しません。</div>
+  <input id="qfile" type="file" accept=".json,application/json">
+  <button onclick="importQuotes()">quotes.jsonを取り込む</button><div id="qmsg" class="small"></div></details>`;
+  setTimeout(renderQuoteList,0);
  } else if(k==='inventory'){
   h='<h2>商品・在庫</h2><table><tr><th>商品</th><th>年産</th><th>実在庫</th><th>予約</th><th>出荷可能</th></tr>';
-  for(const b of D.balances)h+=`<tr><td>${esc(pname(b.product_id))}</td><td>${esc(b.production_year)}</td><td>${Number(b.quantity||0)}</td><td>${Number(b.reserved_quantity||0)}</td><td>${Number(b.quantity||0)-Number(b.reserved_quantity||0)}</td></tr>`;
+  const sortedBalances=[...D.balances].sort((a,b)=>{
+    const pa=D.products.find(x=>x.id===a.product_id), pb=D.products.find(x=>x.id===b.product_id);
+    const ca=String(pa?.code||''), cb=String(pb?.code||'');
+    const c=ca.localeCompare(cb,'ja',{numeric:true,sensitivity:'base'});
+    return c || Number(b.production_year||0)-Number(a.production_year||0);
+  });
+  for(const b of sortedBalances)h+=`<tr><td>${esc(pname(b.product_id))}</td><td>${esc(b.production_year)}</td><td>${Number(b.quantity||0)}</td><td>${Number(b.reserved_quantity||0)}</td><td>${Number(b.quantity||0)-Number(b.reserved_quantity||0)}</td></tr>`;
   h+='</table>';
  } else if(k==='receipt'){
   const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
@@ -212,7 +227,7 @@ function show(k){
   for(const x of D.moves)h+=`<tr><td>${esc((x.occurred_at||'').slice(0,10))}</td><td>${esc(pname(x.product_id))}</td><td>${esc(x.production_year)}</td><td>${Number(x.quantity||0)}</td><td>${esc(x.partner)}</td></tr>`; h+='</table>';
  } else if(k==='shipmentNew'){
   const opts=D.products.filter(x=>x.active).map(x=>`<option value="${x.id}" data-kg="${x.standard_kg}">${esc(x.code)} ${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
-  const wh=D.warehouses.map(x=>`<option>${esc(x.name==='B'?'福建B':x.name)}</option>`).join('');
+  const wh=D.warehouses.map(x=>`<option>${esc(x.name)}</option>`).join('');
   h=`<h2>新規出荷依頼</h2><div class="small">確定時は実在庫を減らさず、予約在庫だけを増やします。</div>
   <label>依頼日</label><input id="sreqdate" type="date" value="${new Date().toLocaleDateString('sv-SE')}">
   <label>出荷日</label><input id="sdate" type="date">
@@ -241,11 +256,11 @@ function show(k){
   h='<h2>運送依頼</h2><table><tr><th>依頼日</th><th>番号</th><th>運送会社</th><th>納品先</th></tr>';
   for(const x of D.transport)h+=`<tr><td>${esc(x.request_date)}</td><td>${esc(x.no)}</td><td>${esc(x.carrier_name)}</td><td>${esc(x.data?.deliveryName)}</td></tr>`;h+='</table>';
  } else {
-  h='<h2>営業倉庫</h2>'; for(const x of D.warehouses)h+=`<div class="card"><b>${esc(x.name==='B'?'福建B':x.name)}</b><br>${esc(x.address)}<br>TEL ${esc(x.phone)} / FAX ${esc(x.fax)}</div>`;
+  h='<h2>営業倉庫</h2>'; for(const x of D.warehouses)h+=`<div class="card"><b>${esc(x.name)}</b><br>${esc(x.address)}<br>TEL ${esc(x.phone)} / FAX ${esc(x.fax)}</div>`;
  }
  content.innerHTML=h;
 }
 sb.auth.getSession().then(({data})=>{if(data.session)start()});
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7.3');
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=0.7.1');
 </script>
 </body></html>

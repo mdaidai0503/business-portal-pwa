@@ -1,8 +1,7 @@
 {
-  "id": "./",
   "name": "業務管理ポータル",
   "short_name": "業務管理",
-  "start_url": "./?v=0.7.3",
+  "start_url": "./?v=0.7.1",
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
